@@ -11,6 +11,10 @@ var svg;
      }];
   var gd;
   
+  //size of our d3 canvas
+  var width = 960,
+      height = 700;
+  
   //reads data into program from selected file. the forEach converts string to number
   d3.csv("data.csv", function(error, csvdata) {
   data = csvdata;
@@ -187,6 +191,7 @@ var svg;
   
   //adds a new data point with input boxes above graph
   function addData() {
+    
     var xValue = Math.floor((Math.random() * 50) + 25);
     var yValue = Math.floor((Math.random() * 50) + 25);
     var desValue = document.getElementById('descrNew').value;
@@ -252,18 +257,35 @@ var svg;
   //deletes a circle based on selection made by contextMenu
   function delData() {
     var editIndex = data.indexOf(gd);
-   
-    //resets lines, otherwise they move because the data array is sliding after splice
-    linedata =[{
-       'i1': 0,
-       'i2': 0
-     }];
+    
+    // ****** new code start
+    var toSplice= [];
+    
+      // checks if lines are going to doomed circles, logs their index in toSplice
+  for(var a=0;a < linedata.length ;a++) {
+      if((linedata[a].i1===editIndex)||(linedata[a].i2===editIndex)) {
+        toSplice.push(a);
+      }
+      //adjusts the coordinates of surviving lines to their new indices (after the splice)
+      if (typeof linedata[a]!=='undefined') {
+        if(linedata[a].i1>editIndex) linedata[a].i1--;
+        if(linedata[a].i2>editIndex) linedata[a].i2--;
+        }
+    }
+    // removes the lines touching doomed circles
+      for(var x = toSplice.length; x>0; x--) {
+          linedata.splice(toSplice[x-1], 1);
+      }
+      
+      // ****** new code end
   
     data.splice(editIndex, 1);
     d3.select(".popup").remove();
     contextMenuShowing = false;
     updateGraph();
   }
+  
+  
   
   //redraws all elements on map
   function updateGraph() {
@@ -284,7 +306,18 @@ var svg;
   //sets dragging behavior
   var drag = d3.behavior.drag()
               .on('drag', function(d) {
-                //changes graph data
+                // svg.selectAll(".dcircle").data(d).remove();
+                // svg.selectAll(".dcircle").data(d).enter()
+                //   .append("circle")
+                //   .attr("r", defaultCircleSize)
+                //   .attr("class", "dcircle")
+                //   .call(drag)
+                //   .attr("cx", function(d) { return x(d.dataXVal); })
+                //   .attr("cy", function(d) { return y(d.dataYVal); })
+                //   .style("fill", function(d) { return color(d.dataType); });
+
+                
+                //changes this circle graph
                 dots.attr('cx', d3.event.x)
                     .attr('cy', d3.event.y);
                 //changes data to reflect new location on graph
@@ -300,6 +333,7 @@ var svg;
     //must remove all instances of these two to ensure lines are beneath circles
     svg.selectAll(".dcircle").remove();
     svg.selectAll(".dtext").remove();
+    svg.selectAll(".dline").remove();
     
     var dots = svg.selectAll(".dcircle").data(data);
     var labels = svg.selectAll(".dtext").data(data);
@@ -329,39 +363,35 @@ var svg;
             updateGraph();
           });
             
-        
-        lines
-          .attr("x1", function(d) {
-            return x(data[d.i1].dataXVal);
-          })
-          .attr("y1", function(d) {
-            return y(data[d.i1].dataYVal);
-          })
-            .attr("x2", function(d) {
-            return x(data[d.i2].dataXVal);
-          })
-          .attr("y2", function(d) {
-            return y(data[d.i2].dataYVal);
-          })
-          .attr("stroke-width", 5)
-          .attr("stroke", "black")
-        .attr("class", "dline")
-         .on("dblclick", function(d,i) {
-            linedata.splice(i, 1);
-            updateGraph();
-          });
+          
+          lines
+            .attr("x1", function(d) {
+              return x(data[d.i1].dataXVal);
+            })
+            .attr("y1", function(d) {
+              return y(data[d.i1].dataYVal);
+            })
+              .attr("x2", function(d) {
+              return x(data[d.i2].dataXVal);
+            })
+            .attr("y2", function(d) {
+              return y(data[d.i2].dataYVal);
+            })
+            .attr("stroke-width", 5)
+            .attr("stroke", "black")
+          .attr("class", "dline")
+          .on("dblclick", function(d,i) {
+              linedata.splice(i, 1);
+              updateGraph();
+            });
     
     //draws circles next so they are above lines and below labels
     dots.enter().append("circle")
-      .attr("class", function(d) {
-            return 'dot color-' + color(d.dataType).replace('#','');
-          })
         .attr("r", defaultCircleSize)
         .attr("class", "dcircle")
         .call(drag)
         .attr("cx", function(d) { return x(d.dataXVal); })
         .attr("cy", function(d) { return y(d.dataYVal); })
-        .attr("dot-color", function(d) { return color(d.dataType).replace('#',''); })
         .style("fill", function(d) { return color(d.dataType); });
         
         
@@ -370,7 +400,6 @@ var svg;
         .attr("class", "dcircle")
         .attr("cx", function(d) { return x(d.dataXVal); })
         .attr("cy", function(d) { return y(d.dataYVal); })
-        .attr("dot-color", function(d) { return color(d.dataType).replace('#',''); })
         .style("fill", function(d) { return color(d.dataType); });
         
       //draws labels last so they are on very top
